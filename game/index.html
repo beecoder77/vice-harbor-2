@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>VICE HARBOR — Port Azura</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230b1030'/%3E%3Cpath d='M6 21 L16 7 L26 21 L21 21 L16 13 L11 21 Z' fill='%23ffb347'/%3E%3C/svg%3E">
+<style>
+  html, body { margin: 0; padding: 0; overflow: hidden; background: #0b1030; height: 100%;
+    font-family: "Avenir Next", "Segoe UI", system-ui, sans-serif; color: #f4f1ea; }
+  #game { position: fixed; inset: 0; display: block; }
+  .hud { position: fixed; z-index: 5; pointer-events: none; }
+  #topbar { top: 14px; right: 18px; text-align: right; }
+  #cash { font-size: 30px; font-weight: 800; letter-spacing: 1px; color: #8dff9e;
+    text-shadow: 0 2px 10px rgba(0,0,0,.65); }
+  #cash small { display: block; font-size: 11px; font-weight: 600; letter-spacing: 3px; color: #ffd9a0; }
+  #stars { font-size: 27px; letter-spacing: 4px; margin-top: 2px; color: #3d4666;
+    text-shadow: 0 2px 8px rgba(0,0,0,.5); }
+  #stars .lit { color: #ffd23e; text-shadow: 0 0 12px rgba(255,210,62,.85), 0 2px 6px rgba(0,0,0,.6); }
+  #jobbar { top: 16px; left: 50%; transform: translateX(-50%); width: 560px; max-width: 62vw;
+    text-align: center; }
+  #jobname { display: inline-block; font-size: 13px; font-weight: 800; letter-spacing: 3px;
+    color: #0b1030; background: linear-gradient(90deg, #ffb347, #ff5e7a); padding: 4px 14px;
+    border-radius: 3px; box-shadow: 0 3px 14px rgba(0,0,0,.45); }
+  #objective { margin-top: 7px; font-size: 16.5px; font-weight: 600; color: #fff;
+    text-shadow: 0 1px 3px rgba(0,0,0,.9), 0 0 14px rgba(0,0,0,.55); }
+  #clock { font-size: 21px; font-weight: 800; color: #ffd23e; margin-top: 2px;
+    text-shadow: 0 2px 8px rgba(0,0,0,.8); }
+  #clock.low { color: #ff5e5e; }
+  #toast { top: 24%; left: 50%; transform: translateX(-50%); width: 620px; max-width: 70vw;
+    text-align: center; opacity: 0; transition: opacity .35s; }
+  #toast .who { font-size: 12.5px; font-weight: 800; letter-spacing: 3px; color: #7ae7ff; }
+  #toast .say { font-size: 21px; font-weight: 650; line-height: 1.35; margin-top: 3px;
+    text-shadow: 0 2px 4px rgba(0,0,0,.95), 0 0 18px rgba(0,0,0,.7); }
+  #bottomleft { left: 18px; bottom: 16px; width: 230px; }
+  #vitalswrap { background: rgba(5,8,24,.55); border: 1px solid rgba(255,255,255,.22);
+    border-radius: 4px; padding: 5px 7px 6px; }
+  #vitalslabel { font-size: 10.5px; letter-spacing: 2.5px; font-weight: 700; color: #ffd9a0; }
+  #vitalsbar { height: 9px; margin-top: 4px; background: rgba(255,255,255,.16); border-radius: 2px; overflow: hidden; }
+  #vitalsfill { height: 100%; width: 100%; background: linear-gradient(90deg, #ff5e7a, #ffb347); }
+  #rideinfo { margin-top: 7px; font-size: 14.5px; font-weight: 700; color: #fff;
+    text-shadow: 0 1px 4px rgba(0,0,0,.9); }
+  #rideinfo span { color: #7ae7ff; font-weight: 800; }
+  #minimapwrap { right: 18px; bottom: 16px; width: 196px; height: 196px; border-radius: 50%;
+    border: 3px solid rgba(244,241,234,.85); box-shadow: 0 6px 24px rgba(0,0,0,.55); overflow: hidden;
+    background: #101736; }
+  #minimap { width: 196px; height: 196px; display: block; }
+  #prompt { bottom: 24%; left: 50%; transform: translateX(-50%); font-size: 17px; font-weight: 700;
+    background: rgba(5,8,24,.72); border: 1px solid rgba(255,255,255,.3); padding: 8px 18px;
+    border-radius: 20px; opacity: 0; transition: opacity .2s; text-shadow: 0 1px 2px #000; }
+  #prompt b { color: #ffd23e; }
+  .screen { position: fixed; inset: 0; z-index: 10; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; text-align: center; }
+  #title { background: linear-gradient(180deg, rgba(9,10,34,.16) 0%, rgba(9,10,34,.40) 62%, rgba(9,10,34,.78) 100%); }
+  #title .kicker { font-size: 15px; letter-spacing: 6px; font-weight: 700; color: #ffd9a0;
+    text-shadow: 0 2px 10px rgba(0,0,0,.8); }
+  #title h1 { margin: 6px 0 0; font-size: 92px; font-weight: 900; letter-spacing: 3px; line-height: .95;
+    background: linear-gradient(180deg, #fff6d8 15%, #ffb347 52%, #ff5e7a 90%);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+    filter: drop-shadow(0 4px 22px rgba(0,0,0,.55)); }
+  #title .tagline { margin-top: 10px; font-size: 18.5px; font-weight: 600; color: #eaf6ff;
+    text-shadow: 0 2px 8px rgba(0,0,0,.85); max-width: 640px; line-height: 1.45; }
+  #title .controls { margin-top: 14px; font-size: 13.5px; letter-spacing: 1.5px; color: #bcd7ff;
+    text-shadow: 0 1px 5px rgba(0,0,0,.9); }
+  .bigbtn { pointer-events: auto; cursor: pointer; margin-top: 26px; font-size: 19px; font-weight: 800;
+    letter-spacing: 2.5px; color: #0b1030; background: linear-gradient(90deg, #ffd23e, #ff8a5e);
+    border: none; padding: 14px 44px; border-radius: 5px; box-shadow: 0 8px 30px rgba(0,0,0,.5); }
+  .bigbtn:hover { filter: brightness(1.08); }
+  .panel { background: rgba(7,10,30,.88); border: 1px solid rgba(255,255,255,.25); border-radius: 10px;
+    padding: 34px 52px; box-shadow: 0 18px 60px rgba(0,0,0,.6); }
+  .panel h2 { margin: 0 0 6px; font-size: 44px; font-weight: 900; letter-spacing: 2px; }
+  .panel p { margin: 4px 0; font-size: 17px; color: #d7e4ff; line-height: 1.5; }
+  #busted h2 { color: #7ae7ff; }
+  #wrecked h2 { color: #ff5e7a; }
+  #complete h2 { color: #8dff9e; }
+  #pause h2 { color: #ffd9a0; }
+  .hidden { display: none !important; }
+</style>
+<script type="importmap">
+{ "imports": { "three": "./vendor/three.module.min.js" } }
+</script>
+</head>
+<body>
+<canvas id="game"></canvas>
+
+<div class="hud" id="topbar">
+  <div id="cash">$0<small>PORT AZURA</small></div>
+  <div id="stars"></div>
+</div>
+<div class="hud" id="jobbar">
+  <div id="jobname" class="hidden">JOB</div>
+  <div id="objective"></div>
+  <div id="clock" class="hidden">0:00</div>
+</div>
+<div class="hud" id="toast"><div class="who"></div><div class="say"></div></div>
+<div class="hud" id="bottomleft">
+  <div id="vitalswrap"><div id="vitalslabel">VITALS</div><div id="vitalsbar"><div id="vitalsfill"></div></div></div>
+  <div id="rideinfo"></div>
+</div>
+<div class="hud" id="minimapwrap"><canvas id="minimap" width="196" height="196"></canvas></div>
+<div class="hud" id="prompt"></div>
+
+<div class="screen" id="title">
+  <div class="kicker">PORT AZURA &middot; EST. SUNSHINE</div>
+  <h1>VICE HARBOR</h1>
+  <div class="tagline">One city, one fixer, five jobs. Steal the car, run the package, outrun the
+    Azura PD &mdash; and turn Port Azura into your harbour.</div>
+  <button class="bigbtn" id="startbtn">START THE ENGINE</button>
+  <div class="controls">WASD drive &amp; walk &middot; F enter / exit car &middot; SPACE handbrake &middot; SHIFT sprint &middot; MOUSE drag camera &middot; P pause &middot; M mute</div>
+</div>
+
+<div class="screen hidden" id="pause"><div class="panel">
+  <h2>PAUSED</h2><p id="pausestats"></p>
+  <button class="bigbtn" id="resumebtn">BACK TO THE STREETS</button>
+</div></div>
+
+<div class="screen hidden" id="busted"><div class="panel">
+  <h2>BUSTED</h2><p>Azura PD got you. The fine stings; the walk of shame is free.</p><p id="bustedstats"></p>
+  <button class="bigbtn" id="bustedbtn">BACK ON THE STREET</button>
+</div></div>
+
+<div class="screen hidden" id="wrecked"><div class="panel">
+  <h2>WRECKED</h2><p>You wake up outside Azura General. The city keeps your hospital bill.</p><p id="wreckedstats"></p>
+  <button class="bigbtn" id="wreckedbtn">DISCHARGE ME</button>
+</div></div>
+
+<div class="screen hidden" id="complete"><div class="panel">
+  <h2>HARBOUR KING</h2>
+  <p>Every job done. Marina Sol raises a glass: Port Azura is yours now.<br>Free roam &mdash; the city, the cars and the cops remain.</p>
+  <p id="completestats"></p>
+  <button class="bigbtn" id="completebtn">KEEP CRUISING</button>
+</div></div>
+
+<script type="module" src="src/main.js"></script>
+</body>
+</html>
